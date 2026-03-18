@@ -64,14 +64,13 @@ pub const Header = struct {
 
 pub const Headers = struct {
     headers: ?*libcurl.CurlSList,
-    cookies: ?[*c]const u8,
 
     pub fn init(user_agent: [:0]const u8) !Headers {
         const header_list = libcurl.curl_slist_append(null, user_agent);
         if (header_list == null) {
             return error.OutOfMemory;
         }
-        return .{ .headers = header_list, .cookies = null };
+        return .{ .headers = header_list };
     }
 
     pub fn deinit(self: *const Headers) void {
@@ -102,20 +101,14 @@ pub const Headers = struct {
     pub fn iterator(self: *Headers) Iterator {
         return .{
             .header = self.headers,
-            .cookies = self.cookies,
         };
     }
 
     const Iterator = struct {
         header: [*c]libcurl.CurlSList,
-        cookies: ?[*c]const u8,
 
         pub fn next(self: *Iterator) ?Header {
-            const h = self.header orelse {
-                const cookies = self.cookies orelse return null;
-                self.cookies = null;
-                return .{ .name = "Cookie", .value = std.mem.span(@as([*:0]const u8, cookies)) };
-            };
+            const h = self.header orelse return null;
 
             self.header = h.*.next;
             return parseHeader(std.mem.span(@as([*:0]const u8, @ptrCast(h.*.data))));
@@ -457,11 +450,6 @@ pub const Connection = struct {
         defer header_list.deinit();
         try self.secretHeaders(&header_list, http_headers);
         try self.setHeaders(&header_list);
-
-        // Add cookies.
-        if (header_list.cookies) |cookies| {
-            try self.setCookies(cookies);
-        }
 
         try libcurl.curl_easy_perform(self._easy);
         return self.getResponseCode();

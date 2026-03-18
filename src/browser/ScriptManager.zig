@@ -138,9 +138,9 @@ fn clearList(list: *std.DoublyLinkedList) void {
     }
 }
 
-fn getHeaders(self: *ScriptManager, arena: Allocator, url: [:0]const u8) !net_http.Headers {
+fn getHeaders(self: *ScriptManager) !net_http.Headers {
     var headers = try self.client.newHeaders();
-    try self.page.headersForRequest(arena, url, &headers);
+    try self.page.headersForRequest(&headers);
     return headers;
 }
 
@@ -280,7 +280,7 @@ pub fn addFromElement(self: *ScriptManager, comptime from_parser: bool, script_e
             .ctx = script,
             .method = .GET,
             .frame_id = page._frame_id,
-            .headers = try self.getHeaders(arena, url),
+            .headers = try self.getHeaders(),
             .blocking = is_blocking,
             .cookie_jar = &page._session.cookie_jar,
             .resource_type = .script,
@@ -405,7 +405,7 @@ pub fn preloadImport(self: *ScriptManager, url: [:0]const u8, referrer: []const 
         .ctx = script,
         .method = .GET,
         .frame_id = page._frame_id,
-        .headers = try self.getHeaders(arena, url),
+        .headers = try self.getHeaders(),
         .cookie_jar = &page._session.cookie_jar,
         .resource_type = .script,
         .notification = page._session.notification,
@@ -508,7 +508,7 @@ pub fn getAsyncImport(self: *ScriptManager, url: [:0]const u8, cb: ImportAsync.C
         .url = url,
         .method = .GET,
         .frame_id = page._frame_id,
-        .headers = try self.getHeaders(arena, url),
+        .headers = try self.getHeaders(),
         .ctx = script,
         .resource_type = .script,
         .cookie_jar = &page._session.cookie_jar,
