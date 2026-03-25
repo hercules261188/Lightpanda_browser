@@ -644,6 +644,11 @@ fn makeTransfer(self: *Client, req: Request) !*Transfer {
 
 fn makeRequest(self: *Client, conn: *http.Connection, transfer: *Transfer) anyerror!void {
     {
+        // Reset per-response state for retries (auth challenge, queue).
+        const auth = transfer._auth_challenge;
+        transfer.reset();
+        transfer._auth_challenge = auth;
+
         transfer._conn = conn;
         errdefer {
             transfer._conn = null;
@@ -728,7 +733,9 @@ fn perform(self: *Client, timeout_ms: c_int) anyerror!PerformStatus {
 
 fn processOneMessage(self: *Client, msg: http.Handles.MultiMessage, transfer: *Transfer) !bool {
     // Detect auth challenge from response headers.
-    if (msg.err == null) {
+    // Also check on RecvError: proxy may send 407 with headers before
+    // closing the connection (CONNECT tunnel not yet established).
+    if (msg.err == null or msg.err.? == error.RecvError) {
         transfer.detectAuthChallenge(&msg.conn);
     }
 
